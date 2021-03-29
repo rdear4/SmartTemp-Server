@@ -1,3 +1,6 @@
+#DB creds
+dbConnection.js
+
 # Logs
 logs
 *.log
