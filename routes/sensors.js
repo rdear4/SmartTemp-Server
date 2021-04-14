@@ -1,6 +1,8 @@
 var express = require('express')
 var router = express.Router()
+const mongoose = require('mongoose')
 const Sensor = require("../models/sensor")
+const Reading = require("../models/reading")
 
 router.get('/', function(req, res, next) {
   
@@ -17,6 +19,70 @@ router.get('/', function(req, res, next) {
     
   })
 });
+
+//db.sensors.aggregate([{$lookup: { from: "readings", as: "most_recent", let : { id: "$_id"}, pipeline: [{ $match: { $expr: { $eq: ["$sensorId", "$$id"]}}},{ $limit: 1}]}}])
+router.get("/status", (req, res) => {
+  
+  Sensor.aggregate()
+  .lookup({
+    from: Reading.collection.name,
+    as: "most_recent",
+    let: {sId: "$_id"},
+    pipeline: [
+      { $match: {
+        $expr: {
+          $eq: ["$sensorId", "$$sId"]
+        }}
+      },
+      { $sort: { "timestamp": -1}},
+      { $limit: 1}
+    ]
+  })
+  .exec((err, docs) => {
+
+    if (err) {
+      console.log("There was an ERROR!")
+      console.log(err)
+      return
+    }
+
+    res.json(docs)
+    
+  })
+
+})
+
+router.put('/:id', (req, res) => {
+
+  Sensor.updateOne({"_id": req.params.id}, { $set: req.body}, (err, sensor) => {
+
+    if (err) {
+      res.status(500)
+      res.send("There was an error updating the sensor")
+      return
+    }
+
+    res.json(sensor)
+
+  })
+
+})
+
+router.delete('/:id', (req, res) => {
+
+  Sensor.remove({"_id": req.params.id}, (err) => {
+
+    if (err) {
+      res.status(500)
+      res.send("There was an error removing that sensor from the DB")
+      return
+    }
+
+    res.send("Sensor successfully removed")
+
+  })
+
+})
 
 router.get('/:id', (req, res) => {
 
@@ -51,6 +117,7 @@ router.get("/all", (req, res) => {
 
   })
 })
+
 
 router.post("/new", (req, res) => {
 

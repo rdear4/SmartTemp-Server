@@ -6,6 +6,9 @@ var logger = require('morgan');
 // var mongoose = require('mongoose')
 var dbConn = require('./dbConnection')
 
+const Reading = require('./models/reading')
+const Sensor = require('./models/sensor')
+
 var indexRouter = require('./routes/index');
 var usersRouter = require('./routes/users');
 var sensorsRouter = require('./routes/sensors')
@@ -43,5 +46,68 @@ app.use(function(err, req, res, next) {
   res.status(err.status || 500);
   res.render('error');
 });
+
+//Update the status of the sensors every 10 seconds
+const sensorsUpdateTimer = setInterval(() => {
+
+  Sensor.aggregate()
+  .lookup({
+    from: Reading.collection.name,
+    as: "most_recent",
+    let: {sId: "$_id"},
+    pipeline: [
+      { $match: {
+        $expr: {
+          $eq: ["$sensorId", "$$sId"]
+        }}
+      },
+      { $sort: { "timestamp": -1}},
+      { $limit: 1}
+    ]
+  })
+  .exec((err, docs) => {
+
+    if (err) {
+      console.log("There was an error updating the status of the sensors")
+      console.log(err)
+      return
+    }
+
+    for (let sensor of docs) {
+
+      let status = (new Date().getTime() - new Date(sensor.most_recent[0].timestamp).getTime() > (3 * 60 * 1000)) ? "Offline" : "Online"
+
+      if (status === "Offline" && sensor.status !== "Offline") {
+
+        console.log(`Updating ${sensor._id} to show as offline`)
+
+        Sensor.updateOne({"_id": sensor._id}, { $set: { "status": "Offline"}}, (err) => {
+
+          if (err) {
+            console.log("There was an error updating the status")
+          } else {
+            console.log(`Sensor ${sensor._id} set to offline`)
+          }
+        })
+
+      } if (sensor.status === "Offline" && status === "Online") {
+
+        Sensor.updateOne({"_id": sensor._id}, { $set: { "status": "Online"}}, (err) => {
+
+          if (err) {
+            console.log("There was an error updating the status")
+          } else {
+            console.log(`Sensor ${sensor._id} set to offline`)
+          }
+        })
+
+      }
+      
+
+    }
+    
+  })
+
+}, 5000)
 
 module.exports = app;

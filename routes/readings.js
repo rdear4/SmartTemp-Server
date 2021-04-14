@@ -22,7 +22,7 @@ router.get('/', (req, res) => {
 
 router.post("/", (req, res) => {
 
-  console.log(req.body)
+  // console.log(req.body)
   let readingData = {...req.body}
   delete readingData.test
 
@@ -42,31 +42,20 @@ router.post("/", (req, res) => {
 
 })
 
-router.get('/currentTest', (req, res) => {
-
-  Reading.aggregate().group({
-    _id: "$sensorId",
-    temp: { $last: "$temperature" }
-  })
-  .exec((err, docs) => {
-
-    res.json(docs)
-  })
-  .catch(err => {
-    console.log(err)
-    res.send(err)
-
-  })
-
-})
+//db.readings.aggregate([{ $match: { timestamp : { $gt: new Date(new Date().getTime() - 1000 * 80) } } }, { $group: { _id: null, temp: { $avg: "$temperature"}, humidity: { $avg: "$humidity" }, sensors: { $sum: 1 }}} ])
 
 router.get('/current', (req, res) => {
 
   try {
-    Reading.aggregate().group({
-      _id: "$sensorId",
-      temperature: { $last: "$temperature" },
-      humidity: { $last: "$humidity" }
+    Reading.aggregate()
+    .match({
+      timestamp: { $gt: new Date(new Date().getTime() - 1000 * 70)}
+    })
+    .group({
+      _id: null,
+      temperature: { $avg: "$temperature" },
+      humidity: { $avg: "$humidity" },
+      sensors: { $sum: 1}
     })
     .exec((err, docs) => {
   
@@ -82,6 +71,29 @@ router.get('/current', (req, res) => {
   }
   
 })
+
+// router.get('/current', (req, res) => {
+
+//   try {
+//     Reading.aggregate().group({
+//       _id: "$sensorId",
+//       temperature: { $last: "$temperature" },
+//       humidity: { $last: "$humidity" }
+//     })
+//     .exec((err, docs) => {
+  
+//       res.json(docs)
+
+//     })
+//   } catch (err) {
+//     res.status(500)
+//     res.json({
+//       err: err,
+//       errMsg: `There was an error finding the most recent readings`
+//     })
+//   }
+  
+// })
 
 router.get('/sensor/:id', (req, res) => {
 

@@ -22,6 +22,10 @@ const sensorSchema = new Schema({
   active: {
       type: Boolean,
       default: true
+  },
+  status: {
+    type: String,       //Online, Deployed, Offline, Charging
+    default: "Online"
   }
 
 
